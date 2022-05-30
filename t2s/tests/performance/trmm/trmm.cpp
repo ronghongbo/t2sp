@@ -26,19 +26,24 @@ using namespace Halide;
 
 int main()
 {
-    // Dependences
-    #define P               kkk,      jjj,  iii,  jj, ii, kk,     q
-    #define P_kkk_minus_1   kkk-1,    jjj,  iii,  jj, ii, kk,     q
-    #define P_kk_minus_1    kkk+KKK-1,jjj,  iii,  jj, ii, kk-1,   q
-    #define P_q_minus_1     kkk+KKK-1,jjj,  iii,  jj, ii, kk+KK-1,q-1
-    #define P_jjj_minus_1   kkk,      jjj-1,iii,  jj, ii, kk,     q
-    #define P_iii_minus_1   kkk,      jjj,  iii-1,jj, ii, kk,     q
-    #define P_Out                     jjj,  iii,  jj, ii,         q   // should be j(P), i(P), but we do not allocate memory for Out anyway (we use channel). So does not matter
+    // Dependences. We do not flatten i and k because k does not exist in P_Out.
+    // We do not flatten i and j either, because we need remove j from A_serializer.
+    #define P               kkk,      jjj,  iii,  jj, ii, kk,     k,  j,i
+    #define P_kkk_minus_1   kkk-1,    jjj,  iii,  jj, ii, kk,     k,  j,i
+    #define P_kk_minus_1    kkk+KKK-1,jjj,  iii,  jj, ii, kk-1,   k,  j,i
+    #define P_k_minus_1     kkk+KKK-1,jjj,  iii,  jj, ii, kk+KK-1,k-1,j,i
+    #define P_jjj_minus_1   kkk,      jjj-1,iii,  jj, ii, kk,     k,  j,i
+    #define P_iii_minus_1   kkk,      jjj,  iii-1,jj, ii, kk,     k,  j,i
+    #define P_Out                     jjj,  iii,  jj, ii,             j,i
 
     // Linearized addresses
-    #define total_i         (iii + III * ii + III * II * i(P))
-    #define total_j         (jjj + JJJ * jj + JJJ * JJ * j(P))
-    #define total_k         (kkk + KKK * kk + KKK * KK * k(P))
+    #define total_i         (iii + III * ii + III * II * i)
+    #define total_j         (jjj + JJJ * jj + JJJ * JJ * j)
+    #define total_k         (kkk + KKK * kk + KKK * KK * k)
+
+    // For now, do not flatten i and k. Enable this feature in the next step, and
+    // transfer only half of the matrix A.
+    // #define i_k             ((((2 * K - i + 1) * i) / 2) + (k - i + 1))
 
     // Outer loop bounds, which are determined by input sizes
     #define I (A.dim(1).extent() / (III * II))
@@ -53,102 +58,36 @@ int main()
     ImageParam A("A", TTYPE, 2), B("B", TTYPE, 2);
 
     // UREs
-    Var kkk("kkk"), jjj("jjj"), iii("iii"), jj("jj"), ii("ii"), kk("kk"), q("q");
-    URE i("i", Int(32), {P}), j("j", Int(32), {P}),  k("k", Int(32), {P}),
-        inner_time_loops_finished("inner_time_loops_finished", UInt(1), {P}),
-        j_finished("j_finished", UInt(1), {P}),
-        k_finished("k_finished", UInt(1), {P}),
-        X("X", TTYPE, {P}), Y("Y", TTYPE, {P}), Z("Z", TTYPE, {P}), Out("Out");
-    inner_time_loops_finished(P) = (kkk == KKK-1 && jj == JJ - 1 && ii == II-1 && kk == KK - 1);
-    j_finished(P)                = (j(P_q_minus_1) == J - 1);
-    k_finished(P)                = (k(P_q_minus_1) == K - 1);
-    i(P) = select(q == 0, 0, // At the first tile, i is 0
-                  select(inner_time_loops_finished(P) && k_finished(P) && j_finished(P),
-                         i(P_q_minus_1) + 1,
-                         i(P_q_minus_1)));
-    j(P) = select(q == 0, 0, // At the first tile, j is 0
-                  select(inner_time_loops_finished(P) && k_finished(P),
-                         select(j_finished(P), 0, j(P_q_minus_1) + 1),
-                         j(P_q_minus_1)));
-    k(P) = select(q == 0, 0, // At the first tile, k is 0
-                  select(inner_time_loops_finished(P),
-                         select(k_finished(P), i(P), k(P_q_minus_1) + 1),
-                         k(P_q_minus_1)));
-    X(P) = select(total_k < total_i, 0,       // 0 if in lower triangle
-                  select(jjj == 0, A(total_k, total_i), X(P_jjj_minus_1)));
+    Var kkk("kkk"), jjj("jjj"), iii("iii"), jj("jj"), ii("ii"), kk("kk"), k("k"), j("j"), i("i");
+    URE X("X", TTYPE, {P}), Y("Y", TTYPE, {P}), Z("Z", TTYPE, {P}), Out("Out");
+    X(P) = select(jjj == 0, A(total_k, total_i), X(P_jjj_minus_1));
     Y(P) = select(iii == 0, B(total_j, total_k), Y(P_iii_minus_1));
-    Z(P) = select(kkk == 0 && kk == 0 && k(P) == i(P), 0,
-                  select(kkk == 0, select(kk == 0, Z(P_q_minus_1), Z(P_kk_minus_1)), Z(P_kkk_minus_1)))
-                  + X(P) * Y(P);
-    Out(P_Out) = select(kkk == KKK-1 && kk == KK-1 && k(P) == K-1, Z(P));
-    /* The above statement will be translated into this:
-          for P_Out {
-            if (kkk == KKK-1 && kk == KK-1 && k(P) == K-1) {
-                 write_channel(Out.channel, Z(P));
-            }
-          }
-     */
+    Z(P) = select(kkk == 0 && kk == 0 && k == 0, 0,
+                select(kkk == 0, select(kk == 0, Z(P_k_minus_1), Z(P_kk_minus_1)), Z(P_kkk_minus_1)))
+                + X(P) * Y(P);
+    Out(P_Out) = select(kkk == KKK-1 && kk == KK-1 && k == K-1, Z(P));
 
     // Put all the UREs inside the same loop nest of X.
-    inner_time_loops_finished.merge_ures(j_finished, k_finished, i, j, k, X, Y, Z, Out);
+    X.merge_ures(Y, Z, Out);
 
     // Explicitly set the loop bounds
-    inner_time_loops_finished.set_bounds(jjj, 0, JJJ, iii, 0, III, kkk, 0, KKK)
+    X.set_bounds(jjj, 0, JJJ, iii, 0, III, kkk, 0, KKK)
      .set_bounds(jj,  0, JJ,  ii,  0, II,  kk,  0, KK)
-     .set_bounds(q,   0, J * (K + 1) * K / 2);
+     .set_bounds(j,   0, J,   i,   0, I,   k,   i, K);
 
     // Create a systolic array
-    inner_time_loops_finished.space_time_transform(jjj, iii);
+    X.space_time_transform(jjj, iii);
 
-    // Here I copied the traditional T2S interface generated by T2X, but fixed the followiing two
-    // places, which seem wrong:
-    //      A_serializer.remove(jjj, jj, q);
-    //      B_serializer.remove(iii, ii, q);
-    Func A_serializer("A_serializer", Place::Host), B_serializer("B_serializer", Place::Host), deserializer("deserializer", Place::Host);
-    Func aLoader("aLoader", Place::Device), aFeeder("aFeeder", Place::Device), bLoader("bLoader", Place::Device), bFeeder("bFeeder", Place::Device),
-         unloader("unloader", Place::Device);
-    inner_time_loops_finished.isolate_producer_chain(A, A_serializer, aLoader, aFeeder);
-    aLoader.remove(jjj, jj);
-    A_serializer.remove(jjj, jj);
-    aFeeder.scatter(aLoader, iii);
-    aFeeder.buffer(aLoader, q);
-    aLoader.vectorize(kkk);
-    aFeeder.vectorize(kkk);
-    inner_time_loops_finished.vectorize(kkk);
-    aLoader.min_depth(256);
-    aFeeder.min_depth(256);
-    inner_time_loops_finished.isolate_producer_chain(B, B_serializer, bLoader, bFeeder);
-    bLoader.remove(iii, ii);
-    B_serializer.remove(iii, ii);
-    bFeeder.scatter(bLoader, jjj);
-    bFeeder.buffer(bLoader, q);
-    bLoader.vectorize(kkk);
-    bFeeder.vectorize(kkk);
-    inner_time_loops_finished.vectorize(kkk);
-    bLoader.min_depth(256);
-    bFeeder.min_depth(256);
-    Out.relay(Z, jjj);
-    Out.isolate_consumer_chain(unloader, deserializer);
-    unloader.vectorize(jjj);
-    deserializer.vectorize(jjj);
+    // For simplicity, send the full matrix A.
+    // TODO: enable sending only the upper triangle
 
-    /*
-    // FIX this T2X I/O network
-    Stensor DA("aLoader", DRAM), SA("aFeeder", SRAM), DB("bLoader", DRAM), SB("bFeeder", SRAM);
-    Stensor RC("collector", REG), DC("unloader", DRAM), C("deserializer");
-    A >> DA.out(kkk)                >> FIFO(256)
-      >> SA.scope(q).out(kkk, iii)  >> FIFO(256);
-    B >> DB.out(kkk)                >> FIFO(256)
-      >> SB.scope(q).out(kkk, jjj)  >> FIFO(256);
-    Out >> RC.scope(iii).out(jjj)   >> FIFO(256)
-        >> DC >> C(total_j, total_i);
-    */
 
     // Compile the kernel to an FPGA bitstream, and expose a C interface for the host to invoke
-    Target acc = get_host_target();
-    acc.set_feature(Target::IntelFPGA);
-    acc.set_feature(Target::EnableSynthesis);
-    deserializer.compile_to_host("trmm-interface", { A, B }, "trmm", acc);
+#ifdef GPU
+    C.compile_to_host("trmm-interface", { A, B }, "trmm", IntelGPU);
+#else
+    C.compile_to_host("trmm-interface", { A, B }, "trmm", IntelFPGA);
+#endif
     printf("Success\n");
     return 0;
 }
