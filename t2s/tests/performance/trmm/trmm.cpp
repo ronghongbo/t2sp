@@ -78,16 +78,61 @@ int main()
     // Create a systolic array
     X.space_time_transform(jjj, iii);
 
-    // For simplicity, send the full matrix A.
-    // TODO: enable sending only the upper triangle
+    // Input path of matrix A
+    Func ASerializer("ASerializer", Place::Host), ALoader("ALoader", Place::Device), AFeeder("AFeeder", Place::Device);
+    X.isolate_producer_chain(A, ASerializer, ALoader, AFeeder);
 
+    // For simplicity, let ASerializer send the full matrix A, even though ALoader still reads just the upper part of A.
+    // That is, because the producer and consumer communicate through memory, instead of being directly connected by a channel,
+    // the producer can write the memory in any way, and the consumer can read the memory in any way, as long as the producer
+    // has finished all its writing to the memory before the consumer starts reading the memory.
+    // TODO: enable sending only the upper triangle
+    ASerializer.set_bounds(k, 0, K).remove(jjj, jj, j);
+
+    // Input path of matrix B
+    Func BSerializer("BSerializer", Place::Host), BLoader("BLoader", Place::Device), BFeeder("BFeeder", Place::Device);
+    X.isolate_producer_chain(B, BSerializer, BLoader, BFeeder);
+    BSerializer.set_bounds(k, 0, K).remove(iii, ii, i);
+
+    Func deserializer("deserializer", Place::Host), unloader("unloader", Place::Device);
+    Out.relay(Z, jjj);
+    Out.isolate_consumer_chain(unloader, deserializer);
+    unloader.vectorize(jjj);
+    deserializer.vectorize(jjj);
+    /*
+     * T2X emits: X.isolate_producer_chain({A}, A_serializer, aLoader, aFeeder);
+   2 T2X emits: aLoader.remove(jjj, jj);
+   3 T2X emits: A_serializer.remove(jjj, jj, j);
+   4 T2X emits: aFeeder.scatter(aLoader, iii);
+   5 T2X emits: aFeeder.buffer(aLoader, k);
+   6 T2X emits: aLoader.vectorize(kkk);
+   7 T2X emits: aFeeder.vectorize(kkk);
+   8 T2X emits: X.vectorize(kkk);
+   9 T2X emits: aLoader.min_depth(256);
+  10 T2X emits: aFeeder.min_depth(256);
+  11 T2X emits: X.isolate_producer_chain({B}, B_serializer, bLoader, bFeeder);
+  12 T2X emits: bLoader.remove(iii, ii);
+  13 T2X emits: B_serializer.remove(iii, ii, i);
+  14 T2X emits: bFeeder.scatter(bLoader, jjj);
+  15 T2X emits: bFeeder.buffer(bLoader, k);
+  16 T2X emits: bLoader.vectorize(kkk);
+  17 T2X emits: bFeeder.vectorize(kkk);
+  18 T2X emits: X.vectorize(kkk);
+  19 T2X emits: bLoader.min_depth(256);
+  20 T2X emits: bFeeder.min_depth(256);
+  21 T2X emits: Out.relay(Z, jjj);
+  22 T2X emits: Out.isolate_consumer_chain(unloader, deserializer);
+  23 T2X emits: unloader.vectorize(jjj);
+  24 T2X emits: deserializer.vectorize(jjj);
+     *
+     */
 
     // Compile the kernel to an FPGA bitstream, and expose a C interface for the host to invoke
-#ifdef GPU
-    C.compile_to_host("trmm-interface", { A, B }, "trmm", IntelGPU);
-#else
-    C.compile_to_host("trmm-interface", { A, B }, "trmm", IntelFPGA);
-#endif
+    Target acc = get_host_target();
+    acc.set_feature(Target::IntelFPGA);
+    acc.set_feature(Target::EnableSynthesis);
+    deserializer.compile_to_host("trmm-interface", { A, B }, "trmm", acc);
+
     printf("Success\n");
     return 0;
 }

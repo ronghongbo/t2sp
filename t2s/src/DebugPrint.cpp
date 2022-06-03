@@ -51,7 +51,7 @@ string to_string(const Expr &expr) {
 string to_string(const vector<Expr> &e) {
     std::ostringstream s;
     for (size_t i = 0; i < e.size(); i++) {
-        s << ((i==0) ? "" : ", ") << e[i] << "\n";
+        s << ((i==0) ? "" : ", ") << e[i];
     }
     return s.str();
 }

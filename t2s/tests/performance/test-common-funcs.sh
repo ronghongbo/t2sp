@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function cleanup {
-    rm -rf a.* a/ ${workload}-interface.* *.out exec_time.txt *.png *.o *.isa ${workload}_genx.cpp signed* temp* profile.mon
+    rm -rf a.* a a/ ${workload}-interface.* *.out exec_time.txt *.png *.o *.isa ${workload}_genx.cpp signed* temp* profile.mon
 }
 
 function libhalide_to_link {

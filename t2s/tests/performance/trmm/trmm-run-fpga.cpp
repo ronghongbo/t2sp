@@ -71,19 +71,46 @@ int main()
 
 #ifdef TINY
     // Validate the results
+    Halide::Runtime::Buffer<float> golden(JJJ, III, JJ, II, J, I);
     for (int i = 0; i < I; i++)
     for (int j = 0; j < J; j++)
         for (int ii = 0; ii < II; ii++)
         for (int jj = 0; jj < JJ; jj++)
             for (int iii = 0; iii < III; iii++)
             for (int jjj = 0; jjj < JJJ; jjj++) {
+                golden(jjj, iii, jj, ii, j, i) = 0.0f;
+            }
+
+    for (int i = 0; i < I; i++)
+    for (int j = 0; j < J; j++)
+    for (int k = i; k < K; k++)
+        for (int kk = 0; kk < KK; kk++)
+        for (int ii = 0; ii < II; ii++)
+        for (int jj = 0; jj < JJ; jj++)
+            for (int iii = 0; iii < III; iii++)
+            for (int jjj = 0; jjj < JJJ; jjj++)
+            for (int kkk = 0; kkk < KKK; kkk++) {
                 size_t total_i = iii + III * ii + III * II * i;
                 size_t total_j = jjj + JJJ * jj + JJJ * JJ * j;
-                float golden = 0.0f;
-                for (int k = 0; k < TOTAL_K; k++)
-                    golden += a(k, total_i) * b(total_j, k);
-                assert(fabs(golden - c(jjj, iii, jj, ii, j, i)) < 0.005*fabs(golden));
+                size_t total_k = kkk + KKK * kk + KKK * KK * k;
+                printf("jjj=%i iii=%i jj=%i ii=%i j=%i i=%i: a=%f, b=%f\n",
+                        jjj, iii, jj, ii, j, i, a(total_k, total_i), b(total_j, total_k)
+                );
+                golden(jjj, iii, jj, ii, j, i) += a(total_k, total_i) * b(total_j, total_k);
             }
+    for (int i = 0; i < I; i++)
+    for (int j = 0; j < J; j++)
+        for (int ii = 0; ii < II; ii++)
+        for (int jj = 0; jj < JJ; jj++)
+            for (int iii = 0; iii < III; iii++)
+            for (int jjj = 0; jjj < JJJ; jjj++) {
+                printf("jjj=%i iii=%i jj=%i ii=%i j=%i i=%i: golden=%f, c=%f\n",
+                        jjj, iii, jj, ii, j, i, golden(jjj, iii, jj, ii, j, i), c(jjj, iii, jj, ii, j, i)
+                );
+                assert(fabs(golden(jjj, iii, jj, ii, j, i) - c(jjj, iii, jj, ii, j, i))
+                        < 0.005*fabs(golden(jjj, iii, jj, ii, j, i)));
+            }
+
 #endif
 
     printf("Success\n");

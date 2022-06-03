@@ -94,7 +94,7 @@ vector<string> find_output_loops(string bank_loop, const vector<int> &output_dim
 }
 
 // Data relaying executes like a pipeline. For example, for the PE dims iii and jjj, we would
-// generate jjj pipelines where iii PEs share the one. PEs put its output value onto the pipeline,
+// generate jjj pipelines where iii PEs share one pipeline. PEs put its output value onto the pipeline,
 // and the pipeline move forward. At the head of pipeline, we could collect data from all pipelines.
 class DataRelaying : public IRMutator {
     const RelayItem &param;
@@ -294,6 +294,8 @@ class DataRelaying : public IRMutator {
     }
 
     Stmt make_flag_update() {
+        debug(4) << "....make_flag_update. lincode=" << to_string(pipe_alloc.lin_cond) << "\n"
+                << "           emit_code=" << to_string(pipe_alloc.emit_cond) << "\n";
         Expr update_cond = pipe_alloc.lin_cond;
         vector<Expr> conds = break_logic_into_conjunction(pipe_alloc.emit_cond);
         // Remove conjunctions with variables inside PE dims
@@ -301,6 +303,7 @@ class DataRelaying : public IRMutator {
         for (auto &e : conds) {
             int i = 0;
             for (; i <= PE_dim; i++) {
+                debug(4) << "      i=" << i << "allocargs=" << to_string(alloc.args[i]) << "\n";
                 internal_assert(alloc.args[i].as<Variable>());
                 auto name = alloc.args[i].as<Variable>()->name;
                 CheckVarUsage cvu(name);

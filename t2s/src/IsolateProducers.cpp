@@ -568,9 +568,9 @@ Func &Func::isolate_producer(const vector<FuncOrExpr> &_fs, Func p) {
 
     vector<Func> p_ures; // UREs of Func p
     all_ures(p, p_ures);
-    debug(4) << "After isolating " << names_to_string(fs) << " to producer " << p.name() << ":\n"
+    debug(4) << "After isolating " << names_to_string(fs) << " to producer " << p.name() << ":\n>>>>>>>>>>>>\n"
              << to_string<Func>(p_ures, false) << "\n"
-             << to_string<Func>(ures, false) << "\n";
+             << to_string<Func>(ures, false) << "\n<<<<<<<<<<<<<<<<<<<<<<\n\n";
 
     return *this;
 }
