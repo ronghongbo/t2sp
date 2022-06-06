@@ -62,7 +62,7 @@ int main()
     URE X("X", TTYPE, {P}), Y("Y", TTYPE, {P}), Z("Z", TTYPE, {P}), Out("Out");
     X(P) = select(jjj == 0, A(total_k, total_i), X(P_jjj_minus_1));
     Y(P) = select(iii == 0, B(total_j, total_k), Y(P_iii_minus_1));
-    Z(P) = select(kkk == 0 && kk == 0 && k == 0, 0,
+    Z(P) = select(kkk == 0 && kk == 0 && k == i, 0,
                 select(kkk == 0, select(kk == 0, Z(P_k_minus_1), Z(P_kk_minus_1)), Z(P_kkk_minus_1)))
                 + X(P) * Y(P);
     Out(P_Out) = select(kkk == KKK-1 && kk == KK-1 && k == K-1, Z(P));
@@ -73,7 +73,7 @@ int main()
     // Explicitly set the loop bounds
     X.set_bounds(jjj, 0, JJJ, iii, 0, III, kkk, 0, KKK)
      .set_bounds(jj,  0, JJ,  ii,  0, II,  kk,  0, KK)
-     .set_bounds(j,   0, J,   i,   0, I,   k,   i, K);
+     .set_bounds(j,   0, J,   i,   0, I,   k,   i, K - i);
 
     // Create a systolic array
     X.space_time_transform(jjj, iii);

@@ -24,9 +24,9 @@
 
 // Outer loop bounds for testing
 #ifdef TINY // For verifying correctness only
-    #define K           4
-    #define J           4
-    #define I           4
+    #define K           1//4
+    #define J           1//4
+    #define I           1//4
 #else
     #define K           32
     #define J           32
@@ -54,20 +54,20 @@ int main()
     const int TOTAL_J = JJJ * JJ * J;
     const int TOTAL_K = KKK * KK * K;
 
+    assert(I == K);
+    assert(TOTAL_I == TOTAL_K);
+
     Halide::Runtime::Buffer<float> a(TOTAL_K, TOTAL_I), b(TOTAL_J, TOTAL_K);
     for (size_t i = 0; i < TOTAL_I; i++) {
         for (size_t k = 0; k < TOTAL_K; k++) {
-            a(k, i) = (k < i) ? 0 : random();
+            a(k, i) = (k < i) ? 0 : k+i; //random();
         }
     }
     for (size_t k = 0; k < TOTAL_K; k++) {
         for (size_t j = 0; j < TOTAL_J; j++) {
-            b(j, k) = random();
+            b(j, k) = j+k; //random();
         }
     }
-
-    Halide::Runtime::Buffer<float> c(JJJ, III, JJ, II, J, I);
-    trmm(a, b, c);
 
 #ifdef TINY
     // Validate the results
@@ -98,6 +98,12 @@ int main()
                 );
                 golden(jjj, iii, jj, ii, j, i) += a(total_k, total_i) * b(total_j, total_k);
             }
+#endif
+
+    Halide::Runtime::Buffer<float> c(JJJ, III, JJ, II, J, I);
+    trmm(a, b, c);
+
+#ifdef TINY
     for (int i = 0; i < I; i++)
     for (int j = 0; j < J; j++)
         for (int ii = 0; ii < II; ii++)

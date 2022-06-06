@@ -1,5 +1,6 @@
 #include <numeric>
 #include <set>
+#include "../../Halide/src/CSE.h"
 #include "DebugPrint.h"
 #include "Func.h"
 #include "FlattenLoops.h"
@@ -410,7 +411,7 @@ public:
     Stmt visit(const ProducerConsumer *op) override {
         if (op->is_producer && op->name == param.from_func) {
             inside_pipe = true;
-            Stmt body = flatten_outer_loops(op->body, flattened_loop, env);
+            Stmt body = op->body; //flatten_outer_loops(op->body, flattened_loop, env);
             body = mutate(body);
             inside_pipe = false;
             return ProducerConsumer::make(op->name, op->is_producer, body);
@@ -615,6 +616,14 @@ Stmt relay_data(Stmt s, std::map<std::string, Function> &env, const map<string, 
             s = late_reorder_along_consumer_chain(s, env, kv.first, loops);
         }
     }
+
+    std::set<string> funcs;
+    for(auto entry : env){
+        if (entry.second.place() == Place::Device) {
+            funcs.insert(entry.first);
+        }
+    }
+    s = remove_lets(s, false, true, true, true, funcs);
     return s;
 }
 

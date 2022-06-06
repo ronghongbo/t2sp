@@ -402,11 +402,11 @@ Module lower(const vector<Function> &output_funcs,
     s = combine_channels(s);
     debug(2) << "Lowering after combining channels:\n" << s << "\n\n";
 
-    debug(1) << "Trimming loops to the region over which they do something...\n";
+/*    debug(1) << "Trimming loops to the region over which they do something...\n";
     s = trim_no_ops(s);
     debug(2) << "Lowering after loop trimming:\n"
              << s << "\n\n";
-
+*/
     debug(1) << "Remove Lets and LetStmts in funcs with buffering or scattering...\n";
     {
         std::set<string> funcs;
@@ -583,7 +583,7 @@ Module lower(const vector<Function> &output_funcs,
     char *overlay_num = getenv("HL_OVERLAY_NUM");
     if (t.has_feature(Target::IntelFPGA) && overlay_num == NULL) {
         debug(1) << "Flatten the loops...\n";
-        s = simplify(flatten_loops(s, env));
+        //s = simplify(flatten_loops(s, env));
         debug(2) << "Lowering after loop flattening:\n" << s << "\n\n";
     }
 

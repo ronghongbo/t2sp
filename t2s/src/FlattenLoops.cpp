@@ -342,6 +342,7 @@ public:
             value = simplify(value);
             body = LetStmt::make(flattened_loops[i].name, value, body);
         }
+        debug(4) << "...... after flattening: body is >>>>>>>\n" << to_string(body) << "\n<<<<<<<\n\n";
         return For::make(name, op->min, final_extent, op->for_type, op->device_api, body);
     }
 
@@ -1365,14 +1366,6 @@ Stmt flatten_loops(Stmt s, const std::map<std::string, Function> &env) {
 Stmt flatten_outer_loops(Stmt s, string &loop_lvl, const std::map<std::string, Function> &env) {
     FlattenOuterLoops fol(loop_lvl);
     s = fol.mutate(s);
-
-    std::set<string> funcs;
-    for(auto entry : env){
-        if (entry.second.place() == Place::Device) {
-            funcs.insert(entry.first);
-        }
-    }
-    s = remove_lets(s, false, true, true, true, funcs);
     debug(2) << "IR after outer loop flattening ...\n\n" << s << "\n";
 
     return s;
