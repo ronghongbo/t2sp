@@ -93,6 +93,7 @@ int main()
                 size_t total_i = iii + III * ii + III * II * i;
                 size_t total_j = jjj + JJJ * jj + JJJ * JJ * j;
                 size_t total_k = kkk + KKK * kk + KKK * KK * k;
+                if (jjj==1 && iii==0 && jj==0 && ii==0 && j == 0 && i == 0)
                 printf("jjj=%i iii=%i jj=%i ii=%i j=%i i=%i: a=%f, b=%f\n",
                         jjj, iii, jj, ii, j, i, a(total_k, total_i), b(total_j, total_k)
                 );

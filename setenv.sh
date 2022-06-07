@@ -50,9 +50,9 @@ TOOLS_PATH=$T2S_PATH/install
 
 # Modify these 3 paths if you installed your own versions of gcc or llvm-clang
 # gcc should be located at $GCC_PATH/bin
-GCC_PATH=$TOOLS_PATH/gcc-7.5.0
-export LLVM_CONFIG=$TOOLS_PATH/bin/llvm-config
-export CLANG=$TOOLS_PATH/bin/clang
+GCC_PATH=/usr
+export LLVM_CONFIG=$HOME/clang+llvm-9.0.0-x86_64-linux-gnu-ubuntu-18.04/bin/llvm-config
+export CLANG=$HOME/clang+llvm-9.0.0-x86_64-linux-gnu-ubuntu-18.04/bin/clang
 
 if [ "$1" = "local" -a "$2" = "fpga" ]; then
     # Modify according to your machine's setting
