@@ -394,15 +394,22 @@ void CodeGen_OpenCL_Dev::CodeGen_OpenCL_C::visit(const Ramp *op) {
 
 void CodeGen_OpenCL_Dev::CodeGen_OpenCL_C::visit(const Broadcast *op) {
     string id_value = print_expr(op->value);
-    if (is_standard_opencl_type(op->type)) {
-        print_assignment(op->type.with_lanes(op->lanes), id_value);
-    } else {
+    if (op->type.is_complex() || !is_standard_opencl_type(op->type)) {
         string s = "{";
         for (int i = 0; i < op->lanes; i++) {
             s += ((i == 0) ? "" : ", ") + id_value;
         }
         s += "}";
+        if (op->type.is_complex()) {
+            if (op->type.bits() == 64) {
+                s = "(" + print_type(op->type.with_lanes(op->lanes)) + ")(float" + std::to_string(2 * op->lanes) + ")" + s;
+            } else {
+                s = "(" + print_type(op->type.with_lanes(op->lanes)) + ")(double" + std::to_string(2 * op->lanes) + ")" + s;
+            }
+        }
         print_assignment(op->type.with_lanes(op->lanes), s);
+    } else{
+        print_assignment(op->type.with_lanes(op->lanes), id_value);
     }
 }
 

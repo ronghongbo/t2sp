@@ -41,7 +41,7 @@ function generate_fpga_kernel {
 
 function test_fpga_kernel {
     # Compile the host file (${workload}-run-fpga.cpp) and link with the C interface (${workload}-interface.cpp):
-    g++ ${workload}-run-fpga.cpp ${workload}-interface.cpp ../../../src/AOT-OpenCL-Runtime.cpp ../../../src/Roofline.cpp ../../../src/SharedUtilsInC.cpp  -g -DLINUX -DALTERA_CL -fPIC -I../../../src/ -I $T2S_PATH/Halide/include -I../../../src/AOCLUtils ../../../src/AOCLUtils/opencl.cpp $(aocl compile-config) $(aocl link-config) -L $T2S_PATH/Halide/bin -lelf $(libhalide_to_link) -D$size -lz -lpthread -ldl -std=c++11 -o ./b.out
+    g++ ${workload}-run-fpga.cpp ${workload}-interface.cpp ../../../src/AOT-OpenCL-Runtime.cpp ../../../src/Roofline.cpp ../../../src/SharedUtilsInC.cpp  -g -DLINUX -DALTERA_CL -fPIC -I ../util -I../../../src/ -I $T2S_PATH/Halide/include -I../../../src/AOCLUtils ../../../src/AOCLUtils/opencl.cpp $(aocl compile-config) $(aocl link-config) -L $T2S_PATH/Halide/bin -lelf $(libhalide_to_link) -D$size -lz -lpthread -ldl -std=c++11 -o ./b.out
 
     if [ "$platform" == "emulator" ]; then
         env BITSTREAM="$bitstream" CL_CONTEXT_EMULATOR_DEVICE_INTELFPGA=1 INTEL_FPGA_OCL_PLATFORM_NAME="$EMULATOR_PLATFORM" ./b.out

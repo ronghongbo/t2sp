@@ -415,7 +415,6 @@ void Pipeline::compile_to_host(const string &filename_prefix,
     auto ext = get_output_info(target);
     std::map<Output, std::string> outputs = {
         {Output::dev_src, fn_name},
-        {Output::oneapi_gpu, fn_name},
         {Output::host_header, filename_prefix + ext.at(Output::host_header).extension},
         {Output::host_src, filename_prefix + ext.at(Output::host_src).extension},
     };
